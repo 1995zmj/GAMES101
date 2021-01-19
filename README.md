@@ -28,3 +28,11 @@
 ### [坐标变换](https://github.com/1995zmj/ZMJ/blob/master/%E7%AC%94%E8%AE%B0/%E6%B8%B2%E6%9F%93%E7%9B%B8%E5%85%B3/%E5%9D%90%E6%A0%87%E5%8F%98%E6%8D%A2.md)
 ### [Bresenham直线算法](https://github.com/1995zmj/ZMJ/blob/master/%E7%AC%94%E8%AE%B0/%E6%B8%B2%E6%9F%93%E7%9B%B8%E5%85%B3/Bresenham%E7%9B%B4%E7%BA%BF%E7%AE%97%E6%B3%95.md)
 
+## 作业2
+### 获取三角形的包围盒
+### 点在三角形内
+### 重心坐标
+### 透视校正插值
+### 注意视口变换中Z的变化和z-buff
+
+

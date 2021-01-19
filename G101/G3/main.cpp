@@ -46,32 +46,34 @@ Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio,
     // TODO: Implement this function
     // Create the projection matrix for the given parameters.
     // Then return it.
+	zNear = -zNear;
+	zFar = -zFar;
 	Eigen::Matrix4f p2o = Eigen::Matrix4f::Identity();
-	p2o << zNear, 0, 0, 0,
-		0, zNear, 0, 0,
-		0, 0, zNear + zFar, zNear * zFar,
-		0, 0, -1, 0;
+	p2o <<	zNear, 0, 0, 0,
+			0, zNear, 0, 0,
+			0, 0, zNear+ zFar, 0,
+			0, 0, 1, -zNear*zFar;
 
 	float halfEyeAngelRadian = eye_fov / 2.0f / 180.0f * MY_PI;
 	float t = abs(std::tan(halfEyeAngelRadian) * zNear);
 	float b = -t;
 	float r = abs(t * aspect_ratio);
 	float l = -r;
-	float n = -zNear;
-	float f = -zFar;
+	float n = zNear;
+	float f = zFar;
 
 	Eigen::Matrix4f ortho1 = Eigen::Matrix4f::Identity();
-	ortho1 << 2.0f / (r - l), 0, 0, 0,
-		0, 2.0f / (t - b), 0, 0,
-		0, 0, 2.0f / (n - f), 0,
-		0, 0, 0, 1.0f;
+	ortho1 <<	2.0f / (r - l), 0, 0, 0,
+				0, 2.0f / (t - b), 0, 0,
+				0, 0, 2.0f / (n - f), 0,
+				0, 0, 0, 1.0f;
 	Eigen::Matrix4f ortho2 = Eigen::Matrix4f::Identity();
-	ortho2 << 1, 0, 0, -1 * (r + l) / 2,
-		0, 1, 0, -1 * (t + b) / 2,
-		0, 0, 1, -1 * (n + f) / 2,
-		0, 0, 0, 1;
+	ortho2 <<	1, 0, 0, -1 * (r + l) / 2,
+				0, 1, 0, -1 * (t + b) / 2,
+				0, 0, 1, -1 * (n + f) / 2,
+				0, 0, 0, 1;
 
-	return  ortho1 * ortho2 * p2o * projection;
+	return  ortho2 * ortho1 * p2o * projection;
 }
 
 int main(int argc, const char** argv)
