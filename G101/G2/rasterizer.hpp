@@ -91,12 +91,15 @@ namespace rst
         std::map<int, std::vector<Eigen::Vector3f>> col_buf;
 
         std::vector<Eigen::Vector3f> frame_buf;
+		std::vector<Eigen::Vector4f> depColor;
+		std::vector<float> depth_buf;
 
-        std::vector<float> depth_buf;
-        int get_index(int x, int y);
+		int get_index(int x, int y);
+		int get_index(int x, int y, int id);
 
         int width, height;
 
+		int N = 1;
         int next_id = 0;
         int get_next_id() { return next_id++; }
     };

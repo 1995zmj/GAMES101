@@ -40,7 +40,7 @@ auto to_vec4(const Eigen::Vector3f& v3, float w = 1.0f)
 }
 
 
-static bool insideTriangle(int x, int y, const Vector3f* _v)
+static bool insideTriangle(float x, float y, const Vector3f* _v)
 {   
     // TODO : Implement this function to check if the point (x, y) is inside the triangle represented by _v[0], _v[1], _v[2]
 	Eigen::Vector2f p;
@@ -133,39 +133,77 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
     // TODO : set the current pixel (use the set_pixel function) to the color of the triangle (use getColor function) if it should be painted.
 
 	// bounding box
-	float min_x = std::min(std::min(v[0][0], v[1][0]), v[2][0]);
-	float max_x = std::max(std::max(v[0][0], v[1][0]), v[2][0]);
-	float min_y = std::min(std::min(v[0][1], v[1][1]), v[2][1]);
-	float max_y = std::max(std::max(v[0][1], v[1][1]), v[2][1]);
+	float min_x, max_x, min_y, max_y;
+	min_x = max_x = v[0][0];
+	min_y = max_y = v[0][1];
+	for (int i = 0; i < 3; i++) {
+		min_x = std::min(min_x, v[i][0]);
+		max_x = std::max(max_x, v[i][0]);
 
+		min_y = std::min(min_y, v[i][1]);
+		max_y = std::max(max_y, v[i][1]);
+	}
 	min_x = (int)std::floor(min_x);
 	max_x = (int)std::ceil(max_x);
 	min_y = (int)std::floor(min_y);
 	max_y = (int)std::ceil(max_y);
+
+	float maxDepth = -1;
+	float id = 0;
+	int n = 4;
 	for ( int x = min_x; x < max_x; x++)
 	{
 		for (int y = min_y; y < max_y; y++)
 		{
-			if (insideTriangle((float)x + 0.5,(float)y+0.5,t.v))
+			id = 0;
+			maxDepth = -1;
+			for (int i = 0; i < N; i++)
 			{
-				auto tup = computeBarycentric2D((float)x + 0.5, (float)y + 0.5, t.v);
-				float alpha;
-				float beta;
-				float gamma;
-				std::tie(alpha, beta, gamma) = tup;
-				float w_reciprocal = 1.0 / (alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
-				float z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
-				z_interpolated *= w_reciprocal;
-
-				if (depth_buf[get_index(x, y)] < z_interpolated)
+				for (int j = 0; j < N; j++)
 				{
-					Vector3f color = t.getColor();
-					Vector3f point(3);
-					point << x, y, z_interpolated;
-					depth_buf[get_index(x, y)] = z_interpolated;
-					set_pixel(point, color);
+					float d = 1.0 / (2 * n);
+					float px = x + 2 * d * i + d, py = y + 2 * d * j + d;
+					if (insideTriangle(px, py, t.v))
+					{
+						auto tup = computeBarycentric2D(px, py, t.v);
+						float alpha;
+						float beta;
+						float gamma;
+						std::tie(alpha, beta, gamma) = tup;
+						float w_reciprocal = 1.0 / (alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
+						float z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
+						z_interpolated *= w_reciprocal;
+
+						int flag = get_index(x, y, id);
+						if (depColor[flag][3] < z_interpolated)
+						{
+							Vector3f color = t.getColor();
+							Vector4f point(4);
+							point << color, z_interpolated;
+							depColor[flag] = point;
+						}
+					}
+					id++;
 				}
 			}
+
+			Vector3f color = { 0,0,0 };
+			id = 0;
+			for (int i = 0; i < N; i++)
+			{
+				for (int j = 0; j < N; j++)
+				{
+					int flag = get_index(x, y, id);
+
+					auto t = depColor[flag].head<3>();
+					color += t;
+					if (depColor[flag][3] > maxDepth)
+						maxDepth = depColor[flag][3];
+					id++;
+				}
+			}
+			color /= (N*N);
+			set_pixel(Eigen::Vector3f(x, y, maxDepth), color);
 		}
 	}
 
@@ -195,19 +233,29 @@ void rst::rasterizer::clear(rst::Buffers buff)
     if ((buff & rst::Buffers::Depth) == rst::Buffers::Depth)
     {
         std::fill(depth_buf.begin(), depth_buf.end(), -1.0f);
+		std::fill(depColor.begin(), depColor.end(), Eigen::Vector4f{ 0, 0, 0, -1});
     }
 }
 
 rst::rasterizer::rasterizer(int w, int h) : width(w), height(h)
 {
     frame_buf.resize(w * h);
-    depth_buf.resize(w * h);
+	depth_buf.resize(w * h);
+	depColor.resize(w * h * N * N);
 }
 
 int rst::rasterizer::get_index(int x, int y)
 {
     return (height-1-y)*width + x;
 }
+
+int rst::rasterizer::get_index(int x, int y,int id)
+{
+	int n = N * N;
+	int sp = (height - 1 - y)*width + x;
+	return n * sp + id;
+}
+
 
 void rst::rasterizer::set_pixel(const Eigen::Vector3f& point, const Eigen::Vector3f& color)
 {
