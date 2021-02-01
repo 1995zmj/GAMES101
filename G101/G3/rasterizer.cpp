@@ -280,6 +280,73 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t, const std::array<Eig
     // Use: Instead of passing the triangle's color directly to the frame buffer, pass the color to the shaders first to get the final color;
     // Use: auto pixel_color = fragment_shader(payload);
 
+	auto v = t.toVector4();
+
+	// bounding box
+	float min_x, max_x, min_y, max_y;
+	min_x = max_x = v[0][0];
+	min_y = max_y = v[0][1];
+	for (int i = 0; i < 3; i++) {
+		min_x = std::min(min_x, v[i][0]);
+		max_x = std::max(max_x, v[i][0]);
+
+		min_y = std::min(min_y, v[i][1]);
+		max_y = std::max(max_y, v[i][1]);
+	}
+	min_x = (int)std::floor(min_x);
+	max_x = (int)std::ceil(max_x);
+	min_y = (int)std::floor(min_y);
+	max_y = (int)std::ceil(max_y);
+
+	float maxDepth = -1;
+	float id = 0;
+	int n = 4;
+	for (int x = min_x; x < max_x; x++)
+	{
+		for (int y = min_y; y < max_y; y++)
+		{
+			float px = x + 0.5;
+			float py = y + 0.5;
+			if (insideTriangle(px, py, t.v))
+			{
+				auto tup = computeBarycentric2D(px, py, t.v);
+				float alpha;
+				float beta;
+				float gamma;
+				std::tie(alpha, beta, gamma) = tup;
+				float w_reciprocal = 1.0 / (alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
+				float z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
+				z_interpolated *= w_reciprocal;
+
+				int flag = get_index(x, y, id);
+				if (depColor[flag][3] < z_interpolated)
+				{
+					Vector3f color = t.getColor();
+					Vector4f point(4);
+					point << color, z_interpolated;
+					depColor[flag] = point;
+				}
+			}
+
+			Vector3f color = { 0,0,0 };
+			id = 0;
+			for (int i = 0; i < N; i++)
+			{
+				for (int j = 0; j < N; j++)
+				{
+					int flag = get_index(x, y, id);
+
+					auto t = depColor[flag].head<3>();
+					color += t;
+					if (depColor[flag][3] > maxDepth)
+						maxDepth = depColor[flag][3];
+					id++;
+				}
+			}
+			color /= (N*N);
+			set_pixel(Eigen::Vector3f(x, y, maxDepth), color);
+		}
+	}
  
 }
 
